@@ -4,65 +4,158 @@ import pandas as pd
 import pickle
 
 # Load the trained model
-model = tf.keras.models.load_model('utils/model.h5')
+model = tf.keras.models.load_model('utils/classif_model.h5')
 
 ## load the encoder and scaler
-with open('utils/label_encoder_gender.pkl', 'rb') as file:
+with open('utils/classif_label_encoder_gender.pkl', 'rb') as file:
     label_encoder_gender=pickle.load(file)
 
-with open('utils/onehot_encoder_geo.pkl', 'rb') as file:
+with open('utils/classif_onehot_encoder_geo.pkl', 'rb') as file:
     label_encoder_geo=pickle.load(file)
 
-with open('utils/scaler.pkl', 'rb') as file:
+with open('utils/classif_scaler.pkl', 'rb') as file:
     scaler=pickle.load(file)
     
+    
+# Set the page configuration
+st.set_page_config(
+    page_title="Customer Churn Prediction",
+    page_icon="🔮",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
 
-## streamlit app
-st.title("Customer Churn Prediction")
+# Add a title with a subtitle
+st.title("🔮 Customer Churn Prediction")
+st.subheader("Predict whether a customer will leave the bank based on key attributes.")
 
-# User input
-geography = st.selectbox('Geography', label_encoder_geo.categories_[0])
-gender = st.selectbox('Gender', label_encoder_gender.classes_)
-age = st.slider('Age', 18, 92)
-balance = st.number_input('Balance')
-credit_score = st.number_input('Credit Score')
-estimated_salary = st.number_input('Estimated Salary')
-tenure = st.slider('Tenure', 0, 10)
-num_of_products = st.slider('Number of Products', 1, 4)
-has_cr_card = st.selectbox('Has Credit Card', [0, 1])
-is_active_member = st.selectbox('Is Active Member', [0, 1])
+# Add a styled description
+st.markdown("""
+<style>
+    .description {
+        font-size: 16px;
+        color: #555;
+    }
+</style>
+<p class="description">
+    Fill out the customer details below to get a prediction. Hover over the <b>?</b> icon next to each field for a brief explanation.
+</p>
+""", unsafe_allow_html=True)
 
-# Prepare the input data
-input_data = pd.DataFrame({
-    'CreditScore': [credit_score],
-    'Gender': [label_encoder_gender.transform([gender])[0]],
-    'Age': [age],
-    'Tenure': [tenure],
-    'Balance': [balance],
-    'NumOfProducts': [num_of_products],
-    'HasCrCard': [has_cr_card],
-    'IsActiveMember': [is_active_member],
-    'EstimatedSalary': [estimated_salary]
-})
+# Create a two-column layout for better organization
+col1, col2 = st.columns(2)
 
-# One-hot encode 'Geography'
-geo_encoded = label_encoder_geo.transform([[geography]]).toarray()
-geo_encoded_df = pd.DataFrame(geo_encoded, columns=label_encoder_geo.get_feature_names_out(['Geography']))
+with col1:
+    # Geography
+    geography = st.selectbox(
+        '🌍 Geography',
+        label_encoder_geo.categories_[0],
+        help="The country or region where the customer resides."
+    )
 
-# Combine one-hot encoded columns with input data
-input_data = pd.concat([input_data.reset_index(drop=True), geo_encoded_df], axis=1)
+    # Gender
+    gender = st.selectbox(
+        '👤 Gender',
+        label_encoder_gender.classes_,
+        help="The gender of the customer."
+    )
 
-# Scale the input data
-input_data_scaled = scaler.transform(input_data)
+    # Age
+    age = st.slider(
+        '🎂 Age',
+        18, 92,
+        help="The customer's age in years."
+    )
 
+    # Balance
+    balance = st.number_input(
+        '💰 Balance',
+        help="The current balance in the customer's bank account. Currency: USD ($)."
+    )
 
-# Predict churn
-prediction = model.predict(input_data_scaled)
-prediction_proba = prediction[0][0]
+with col2:
+    # Credit Score
+    credit_score = st.number_input(
+        '🏦 Credit Score',
+        help="A numerical representation of the customer's creditworthiness (300–850)."
+    )
 
-st.write(f'Churn Probability: {prediction_proba:.2f}')
+    # Estimated Salary
+    estimated_salary = st.number_input(
+        '💵 Estimated Salary',
+        help="The customer's estimated annual salary. Currency: USD ($)."
+    )
 
-if prediction_proba > 0.5:
-    st.write('The customer is likely to churn.')
-else:
-    st.write('The customer is not likely to churn.')
+    # Tenure
+    tenure = st.slider(
+        '📅 Tenure',
+        0, 10,
+        help="The number of years the customer has been with the bank."
+    )
+
+# Add additional inputs in a horizontal layout
+st.markdown("### Additional Details")
+num_of_products = st.slider(
+    '🛍️ Number of Products',
+    1, 4,
+    help="The number of products the customer holds with the bank."
+)
+
+has_cr_card = st.selectbox(
+    '💳 Has Credit Card',
+    [0, 1],
+    format_func=lambda x: "Yes" if x else "No",
+    help="Whether the customer has a credit card (1: Yes, 0: No)."
+)
+
+is_active_member = st.selectbox(
+    '🔗 Is Active Member',
+    [0, 1],
+    format_func=lambda x: "Yes" if x else "No",
+    help="Whether the customer is an active member (1: Yes, 0: No)."
+)
+
+# Prepare the input data when the Predict button is clicked
+if st.button("🔍 Predict"):
+    # Prepare the input data
+    input_data = pd.DataFrame({
+        'CreditScore': [credit_score],
+        'Gender': [label_encoder_gender.transform([gender])[0]],
+        'Age': [age],
+        'Tenure': [tenure],
+        'Balance': [balance],
+        'NumOfProducts': [num_of_products],
+        'HasCrCard': [has_cr_card],
+        'IsActiveMember': [is_active_member],
+        'EstimatedSalary': [estimated_salary]
+    })
+
+    # One-hot encode 'Geography'
+    geo_encoded = label_encoder_geo.transform([[geography]]).toarray()
+    geo_encoded_df = pd.DataFrame(geo_encoded, columns=label_encoder_geo.get_feature_names_out(['Geography']))
+
+    # Combine one-hot encoded columns with input data
+    input_data = pd.concat([input_data.reset_index(drop=True), geo_encoded_df], axis=1)
+
+    # Scale the input data
+    input_data_scaled = scaler.transform(input_data)
+
+    # Predict churn
+    prediction = model.predict(input_data_scaled)
+    prediction_proba = prediction[0][0]
+
+    # Display the prediction results
+    st.write(f"### 🧮 Churn Probability: {prediction_proba:.2f}")
+
+    if prediction_proba > 0.5:
+        st.error("⚠️ The customer is likely to churn.")
+    else:
+        st.success("✅ The customer is not likely to churn.")
+
+# Add a footer with style
+st.markdown("""
+<hr>
+<p style='text-align: center; color: gray; font-size: 12px;'>
+    Developed with ❤️ using Streamlit | © 2024 Your Name
+</p>
+""", unsafe_allow_html=True)
